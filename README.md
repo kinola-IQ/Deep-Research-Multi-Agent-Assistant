@@ -49,7 +49,7 @@ Start the FastAPI app with uvicorn:
 ```
 uvicorn app.main:app --host 127.0.0.1 --port 8501
 ```
-The lifespan handler loads the LLM at startup with retries.
+The lifespan handler loads the LLM at startup with retries. Use the `/v1/health` endpoint to check readiness (`model_loaded` flag will be `true` once the model is ready).
 
 API Usage
 ---------
@@ -85,6 +85,18 @@ data: {"type": "progress", "message": "Starting research"}
 data: {"type": "final", "response": "<final markdown report>"}
 ```
 
+Streamlit UI
+------------
+A minimal Streamlit UI is included at `app/GUI/streamlit_ui.py` for local testing and exploration.
+
+- Start the UI:
+```
+streamlit run app/GUI/streamlit_ui.py
+```
+- Set the **API base URL** in the sidebar (default `http://127.0.0.1:8501`).
+- The UI shows a **Backend health** indicator and an **Auto-retry** button that polls `/v1/health` and updates when the model becomes ready.
+
+
 Configuration Notes
 -------------------
 - Model selection: edit `app/system/model/llms.py` (`OllamaClass.model_list`) to reorder or replace model candidates. The first model loading in <=5s is used.
@@ -105,23 +117,43 @@ app/
     utils/                # Events, schemas, logging utilities
 ```
 
-Development Tips
-----------------
+Development & Testing
+---------------------
 - When adjusting prompts or agent behavior, update the corresponding agent in `app/system/agents/`.
 - To change retry/backoff behavior for model loading, edit `load_model` in `app/system/model/model_loader.py`.
-- Tests are currently not provided; consider adding integration tests that exercise `/v1/agent` and `/v1/agent/stream`.
+- Tests have been added for agent factories, model accessors, and endpoint integration (see `app/system/tests/`). Run tests locally with:
+
+```
+pip install -r requirements-dev.txt
+pytest -q
+```
+
+CI is configured to run tests and linters on pushes and pull requests (see `.github/workflows/`).
+
+CI, Linting & Pre-commit
+------------------------
+- Development linters and formatters included: `ruff`, `black`. Pre-commit hooks are configured in `.pre-commit-config.yaml`.
+- Install and run locally:
+
+```
+pip install -r requirements-dev.txt
+pre-commit install
+pre-commit run --all-files
+ruff check .
+black --check .
+```
 
 Troubleshooting
 ---------------
 - Model fails to load: verify Ollama is running and models are pulled (`ollama pull qwen3:4b`, etc.). The loader retries with exponential backoff.
-- Empty search results: Tavily API key missing or quota issues; check `tavily_api_key` env variable.
+- Empty search results: Tavily API key missing or quota issues; check `TAVILY_API_KEY` environment variable.
 - Streaming client issues: ensure the client supports SSE and does not buffer the connection.
 
-incoming updates
-----------------
-- Modification of the llm_switcher module to make it more robustness
-- Addition of custom exceptions for implementing easy to understand error exceptions
-- addition of test modules to validate application function
-- implemention of a user interface
-- implementation of an evaluation module
-- persistence of logs to memory
+Recent changes
+--------------
+- Refactored model loading (with retry/backoff) and added `ModelLoadError` for clearer failures.
+- Agents are now created lazily via factory functions (avoids import-time `None` bindings).
+- Added unit and integration tests, and configured CI with GitHub Actions to run tests and linters.
+- Added a `/v1/health` endpoint and improved HTTP logging and error handling.
+- Introduced a minimal Streamlit UI (`app/GUI/streamlit_ui.py`) with a health indicator and Auto-retry feature.
+- Added linting (`ruff`, `black`) and `pre-commit` configuration to maintain code quality.
