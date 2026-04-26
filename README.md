@@ -1,46 +1,42 @@
 Deep Research Agent
 ===================
 
-A FastAPI service that orchestrates a multi-agent research workflow. It asks clarifying questions, performs web research, drafts a markdown report, and reviews the output with iterative feedback. Responses can be streamed via Server-Sent Events (SSE) for real-time progress updates.
+A FastAPI-based research assistant that runs a multi-agent workflow for question refinement, web research, report drafting, and review. The API exposes both a synchronous endpoint and a streaming endpoint using Server-Sent Events (SSE). A lightweight Streamlit UI is also included for local experimentation.
 
 Features
 --------
-- Workflow-driven orchestration (llama_index workflow) coordinating question, research, report-writing, and review agents.
-- Web research via Tavily, with captured notes persisted in workflow state.
-- Report drafting and automatic review cycles (up to three passes) for completeness.
-- SSE streaming endpoint to monitor progress events and receive the final report.
-- Model loader with retry/backoff and provider switching (Ollama) for robustness.
-- Request/response logging middleware for latency visibility.
+- Multi-agent research workflow with separate question, research, report, and review agent components.
+- Server-Sent Events (SSE) streaming endpoint to emit progress updates and the final report.
+- Ollama-backed model loading with retry/backoff and a shared `LLMSwitcher` loader.
+- Basic health endpoint to confirm the API and model readiness.
+- Minimal Streamlit frontend in `app/GUI/` for local testing.
 
 Architecture
 ------------
-- `app/main.py` boots FastAPI, registers logging middleware, and mounts routes under `/v1`.
-- `app/interface/routes.py` exposes synchronous and streaming endpoints, instantiates the workflow, and wires the agents.
-- `app/system/agents/` defines the individual agents (question, research, report, review) powered by the shared LLM.
-- `app/system/agents/workflow.py` coordinates the multi-step process, fans out question answering, aggregates results, drafts, and reviews.
-- `app/system/tools.py` supplies tool functions used by agents (web search, note taking, report write/review state storage).
-- `app/system/model/` loads the LLM via `LLMSwitcher`, currently targeting local Ollama models.
-- `app/system/utils/` holds events, schemas, and logging utilities.
+- `app/main.py` launches FastAPI and loads the model during startup using an async lifespan manager.
+- `app/interface/routes.py` defines `/v1/health`, `/v1/agent`, and `/v1/agent/stream`.
+- `app/system/agents/` contains agent factories and workflow orchestration.
+- `app/system/model/` handles model selection and loading via Ollama.
+- `app/system/tools.py` provides helper tools used by agents.
+- `app/system/utils/` stores event models, response schemas, and logging utilities.
 
 Prerequisites
 -------------
 - Python 3.11 recommended.
-- Ollama installed and running locally with access to the models in `OllamaClass.model_list` (default: `qwen3:4b`, `gemma3:4b`).
-- Tavily API key available as environment variable `TAVILY_API_KEY`.
-- (Optional) `uvicorn` for local serving during development.
+- Ollama installed and running locally.
+- Tavily API key configured in `TAVILY_API_KEY` if the workflow uses the web search helper.
 
 Installation
 ------------
-1) Clone the repository and enter the project directory.  
-2) Create a virtual environment and activate it.  
-3) Install dependencies (adjust versions as needed):
+1) Clone the repository and enter the project directory.
+2) Create and activate a virtual environment.
+3) Install dependencies:
 ```
 pip install -r requirements.txt
 ```
-4) Export required environment variables:
+4) Set required environment variables:
 ```
-set TAVILY_API_KEY=YOUR_KEY_HERE        # Windows cmd
-# or: $env:TAVILY_API_KEY="YOUR_KEY_HERE"  # PowerShell
+set TAVILY_API_KEY=YOUR_KEY_HERE
 ```
 
 Running the API
@@ -49,111 +45,77 @@ Start the FastAPI app with uvicorn:
 ```
 uvicorn app.main:app --host 127.0.0.1 --port 8501
 ```
-The lifespan handler loads the LLM at startup with retries. Use the `/v1/health` endpoint to check readiness (`model_loaded` flag will be `true` once the model is ready).
 
-API Usage
----------
-- Base path: `/v1`
+Available endpoints
+-------------------
+- `GET /v1/health` — returns service status and whether the model is loaded.
+- `POST /v1/agent` — synchronous request returning the final markdown report.
+- `POST /v1/agent/stream` — SSE streaming endpoint that emits progress updates and a final result.
 
-1) Synchronous research  
-`POST /v1/agent`  
-Body:
+Example request body
+--------------------
 ```
 {
-  "text": "How will low-earth orbit satellite demand evolve by 2030?"
+  "text": "What is the current state of quantum computing research?"
 }
-```
-Response:
-```
-{
-  "response": "<final markdown report>"
-}
-```
-
-2) Streaming research (SSE)  
-`POST /v1/agent/stream`  
-The endpoint streams `progress` events followed by a final `response` event. Example curl:
-```
-curl -N -H "Content-Type: application/json" \
-  -X POST http://127.0.0.1:8501/v1/agent/stream \
-  -d '{"text": "State of quantum error correction"}'
-```
-You will receive lines like:
-```
-data: {"type": "progress", "message": "Starting research"}
-...
-data: {"type": "final", "response": "<final markdown report>"}
 ```
 
 Streamlit UI
 ------------
-A minimal Streamlit UI is included at `app/GUI/streamlit_ui.py` for local testing and exploration.
-
-- Start the UI:
+Launch the UI locally:
 ```
 streamlit run app/GUI/streamlit_ui.py
 ```
-- Set the **API base URL** in the sidebar (default `http://127.0.0.1:8501`).
-- The UI shows a **Backend health** indicator and an **Auto-retry** button that polls `/v1/health` and updates when the model becomes ready.
+Use the sidebar to configure the API base URL and view backend health.
 
-
-Configuration Notes
--------------------
-- Model selection: edit `app/system/model/llms.py` (`OllamaClass.model_list`) to reorder or replace model candidates. The first model loading in <=5s is used.
-- Workflow timeout: instantiated in `WorkflowClass` via `WorkflowClass(timeout=300)` in `routes.py`.
-- Tooling: `search_web` uses Tavily; ensure the API key is set. `record_notes`, `write_report`, and `review_report` persist data in the workflow context.
-- Logging: HTTP request timing is logged through `register_http_logging` in `app/system/utils/logger.py`.
-
-Project Layout
+Project layout
 --------------
 ```
 app/
-  main.py                 # FastAPI entrypoint
-  interface/routes.py     # HTTP endpoints and SSE streaming
+  main.py
+  interface/routes.py
+  GUI/
+    index.html
+    streamlit_ui.py
   system/
-    agents/               # Agent definitions and workflow orchestration
-    model/                # LLM loader/switcher (Ollama)
-    tools.py              # Agent tools (search, notes, report helpers)
-    utils/                # Events, schemas, logging utilities
+    agents/
+      research_agents.py
+      review_agents.py
+      workflow.py
+      write_agents.py
+    model/
+      llm_switcher.py
+      llms.py
+      model_loader.py
+    tools.py
+    utils/
+      events.py
+      logger.py
+      schema.py
+    tests/
+      test_model_and_agents.py
+      test_routes.py
 ```
 
 Development & Testing
 ---------------------
-- When adjusting prompts or agent behavior, update the corresponding agent in `app/system/agents/`.
-- To change retry/backoff behavior for model loading, edit `load_model` in `app/system/model/model_loader.py`.
-- Tests have been added for agent factories, model accessors, and endpoint integration (see `app/system/tests/`). Run tests locally with:
-
+- Install dev dependencies:
 ```
 pip install -r requirements-dev.txt
+```
+- Run tests:
+```
 pytest -q
 ```
 
-CI is configured to run tests and linters on pushes and pull requests (see `.github/workflows/`).
-
-CI, Linting & Pre-commit
-------------------------
-- Development linters and formatters included: `ruff`, `black`. Pre-commit hooks are configured in `.pre-commit-config.yaml`.
-- Install and run locally:
-
-```
-pip install -r requirements-dev.txt
-pre-commit install
-pre-commit run --all-files
-ruff check .
-black --check .
-```
+Linting & CI
+------------
+- Formatting and linting are configured in `pyproject.toml`.
+- Pre-commit hooks are available via `.pre-commit-config.yaml`.
+- GitHub Actions workflows are defined in `.github/workflows/`.
 
 Troubleshooting
 ---------------
-- Model fails to load: verify Ollama is running and models are pulled (`ollama pull qwen3:4b`, etc.). The loader retries with exponential backoff.
-- Empty search results: Tavily API key missing or quota issues; check `TAVILY_API_KEY` environment variable.
-- Streaming client issues: ensure the client supports SSE and does not buffer the connection.
-
-Recent changes
---------------
-- Refactored model loading (with retry/backoff) and added `ModelLoadError` for clearer failures.
-- Agents are now created lazily via factory functions (avoids import-time `None` bindings).
-- Added unit and integration tests, and configured CI with GitHub Actions to run tests and linters.
-- Added a `/v1/health` endpoint and improved HTTP logging and error handling.
-- Introduced a minimal Streamlit UI (`app/GUI/streamlit_ui.py`) with a health indicator and Auto-retry feature.
-- Added linting (`ruff`, `black`) and `pre-commit` configuration to maintain code quality.
+- If the model fails to load, ensure Ollama is running and the configured model is available.
+- If web search behaves unexpectedly, verify `TAVILY_API_KEY` and network access.
+- If streaming fails, confirm the client supports SSE and is not buffering the response.
