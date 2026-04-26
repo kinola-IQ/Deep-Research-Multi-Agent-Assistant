@@ -1,7 +1,11 @@
-Deep Research Agent
+Deep Research Multi-Agent Assistant
 ===================
 
 A FastAPI-based research assistant that runs a multi-agent workflow for question refinement, web research, report drafting, and review. The API exposes both a synchronous endpoint and a streaming endpoint using Server-Sent Events (SSE). A lightweight Streamlit UI is also included for local experimentation.
+
+Visual representation of the workflow
+--------
+![image alt](https://github.com/kinola-IQ/Deep-Research-Multi-Agent-Assistant/blob/0245963d7c09257a40be1db618b094f8cd3946fc/workflow%20diagram.png)
 
 Features
 --------
