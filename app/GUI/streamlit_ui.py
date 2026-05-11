@@ -3,7 +3,7 @@ import streamlit as st
 import requests
 import time
 
-API_BASE = st.sidebar.text_input("API base URL", "http://127.0.0.1:8501")
+API_BASE = st.sidebar.text_input("API base URL", "http://127.0.0.1:8000")
 
 
 def check_health():

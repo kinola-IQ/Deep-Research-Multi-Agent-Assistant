@@ -1,5 +1,5 @@
 """module to handle switching of large language models providers"""
-from .llms import OllamaClass
+from .llms import OllamaClass, GoogleGenAIClass
 from ..utils.logger import logger
 from ..utils.custom_exceptions import ModelLoadError
 
@@ -19,15 +19,18 @@ class LLMSwitcher:
                 logger.error("Ollama model failed to load")
                 raise ModelLoadError("Ollama model failed to load")
             return provider_instance.model
+        if provider.lower() == 'google':
+            provider_instance = GoogleGenAIClass()
+            return provider_instance.model
         raise ValueError(f"Unsupported provider: {provider}")
 
-    def load_model(self):
+    def load_model(self, provider: str):
         """
         utilizes the factory method _get_llm to dynamically switch bwtween
         providers
         """
         try:
-            model = self._get_llm()
+            model = self._get_llm(provider)
             return model
         except ModelLoadError:
             return None

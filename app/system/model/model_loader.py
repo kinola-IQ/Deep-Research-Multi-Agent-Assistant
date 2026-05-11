@@ -16,7 +16,7 @@ model = None
 # helper function to load the model
 @retry(wait=wait_random_exponential(min=5, max=40),
        stop=stop_after_attempt(10))
-def load_model():
+async def load_model():
     """
     loads the model using ollama
     Args:
@@ -24,7 +24,7 @@ def load_model():
     :returns: None
     """
     global model
-    model = LLMSwitcher().load_model()
+    model = LLMSwitcher().load_model('google')
     if model is None:
         logger.error('could not load the model: ')
         raise ModelLoadError('could not load model')

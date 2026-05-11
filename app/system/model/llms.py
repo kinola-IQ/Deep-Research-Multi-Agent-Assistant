@@ -1,12 +1,20 @@
 """module to configure the large language model provider switcher logic"""
+import os
+from dotenv import load_dotenv
 from abc import ABC, abstractmethod
-import time
+
 
 # model providers to iterate through
-from llama_index.llms.ollama import Ollama
+from llama_index.llms.google_genai import GoogleGenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
+from tenacity import retry, wait_random_exponential, stop_after_attempt
+
 
 # modules
 from ..utils.logger import logger
+
+# we need access to env variables
+load_dotenv()
 
 
 # enforcing every model provider class to be defined the same way
@@ -48,3 +56,21 @@ class OllamaClass(LLM):
             except Exception as err:
                 logger.error(f"Failed to init {model_name}: {err}")
         raise RuntimeError("No Ollama models could be initialized")
+
+
+# Google genai
+class GoogleGenAIClass(LLM):
+    """provides access to google gemini models"""
+    def __init__(self) -> None:
+        self.model_name = "gemini-3.1-flash"
+        self.api_key = os.environ["GOOGLE_GENAI_API_KEY"]
+        self.model = self._load_model()
+
+    @retry(wait=wait_random_exponential(10, 20), stop=stop_after_attempt(5))
+    def _load_model(self):
+        """loads model for use"""
+
+        return GoogleGenAI(
+            model=self.model_name,
+            api_key=self.api_key,
+        )

@@ -10,7 +10,7 @@ from ..system.agents.review_agents import get_review_agent   # corrected name
 from ..system.agents.workflow import WorkflowClass
 from ..system.utils.events import ProgressEvent
 from ..system.utils.schema import UserRequest, AgentResponse
-from ..system.model import model_loader
+from ..system.model.model_loader import get_model
 from ..system.utils.logger import logger
 
 
@@ -20,7 +20,7 @@ router = APIRouter()
 @router.get("/health")
 async def health():
     """Health endpoint exposing basic readiness information."""
-    return {"status": "ok", "model_loaded": bool(model_loader.get_model())}
+    return {"status": "ok", "model_loaded": bool(get_model())}
 
 
 async def _sse_generator(handler):
@@ -56,7 +56,7 @@ async def query_agent(query: UserRequest):
     Synchronous-style return (waits for full result, returns AgentResponse).
     Use this if the client expects a single JSON response.
     """
-    if model_loader.get_model() is None:
+    if get_model() is None:
         raise HTTPException(status_code=503, detail="model not loaded yet")
 
     workflow = WorkflowClass(timeout=300)
@@ -75,8 +75,8 @@ async def query_agent(query: UserRequest):
 
     except Exception as exc:
         # Log full exception but return a generic 500 message to clients
-        logger.exception("Agent query failed")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.exception("%s: Agent query failed", exc)
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.post("/agent/stream")
@@ -86,7 +86,7 @@ async def query_agent_stream(query: UserRequest):
     Clients can connect and receive progress messages\
     and then the final result.
     """
-    if model_loader.get_model() is None:
+    if get_model() is None:
         raise HTTPException(status_code=503, detail="model not loaded yet")
 
     workflow = WorkflowClass(timeout=300)

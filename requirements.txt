@@ -6,3 +6,4 @@ tavily
 tenacity
 requests
 streamlit
+llama-index-llms-google-genai

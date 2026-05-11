@@ -75,13 +75,13 @@ class WorkflowClass(Workflow):
         ctx.write_event_to_stream(ProgressEvent(msg=f"""Received question {ev.question}
             Came up with answer: {str(result)}"""))
 
-        return AnswerEvent(question=ev.question,answer=str(result))
+        return AnswerEvent(question=ev.question, answer=str(result))
 
     @step
     async def write_report(self, ctx: Context, ev: AnswerEvent) -> ReviewEvent:
 
         # CODE: store the answers in a variable
-        research = ctx.collect_events(ev, [AnswerEvent] * await ctx.get("total_questions"))
+        research = ctx.collect_events(ev, [AnswerEvent] * await ctx.store.get("total_questions"))
         # If we haven't received all the answers yet, this will be None
         if research is None:
             ctx.write_event_to_stream(ProgressEvent(msg="Collecting answers..."))
@@ -97,7 +97,7 @@ class WorkflowClass(Workflow):
         # Prompt the report
         result = await self.report_agent.run(user_msg=f"""You are part of a deep research system.
           You have been given a complex topic on which to write a report:
-          <topic>{await ctx.get("research_topic")}.
+          <topic>{await ctx.store.get("research_topic")}.
 
           Other agents have already come up with a list of questions about the
           topic and answers to those questions. Your job is to write a clear,
@@ -113,7 +113,7 @@ class WorkflowClass(Workflow):
 
         # CODE: call the review agent at this step
         result = await self.review_agent.run(user_msg=f"""You are part of a deep research system.
-          You have just written a report about the topic {await ctx.get("research_topic")}.
+          You have just written a report about the topic {await ctx.store.get("research_topic")}.
           Here is the report: <report>{ev.report}</report>
           Decide whether this report is sufficiently comprehensive.
           If it is, respond with just the string "ACCEPTABLE" and nothing else.
@@ -128,6 +128,6 @@ class WorkflowClass(Workflow):
         else:
             ctx.write_event_to_stream(ProgressEvent(msg="Sending feedback"))
             return FeedbackEvent(
-                research_topic=await ctx.get("research_topic"),
+                research_topic=await ctx.store.get("research_topic"),
                 feedback=str(result)
             )
