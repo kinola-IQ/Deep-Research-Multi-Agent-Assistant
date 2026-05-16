@@ -46,6 +46,9 @@ class WorkflowClass(Workflow):
         prompt = f"""Generate some questions on the topic <topic>{ev.research_topic}</topic>."""
 
         if isinstance(ev, FeedbackEvent):
+            # pause to let api call limit reset
+            await asyncio.sleep(30)
+            
             ctx.write_event_to_stream(ProgressEvent(msg=f"Got feedback: {ev.feedback}"))
             prompt += f"""You have previously researched this topic and
                 got the following feedback, consisting of additional questions
