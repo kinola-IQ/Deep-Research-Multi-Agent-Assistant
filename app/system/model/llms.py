@@ -62,7 +62,7 @@ class OllamaClass(LLM):
 class GoogleGenAIClass(LLM):
     """provides access to google gemini models"""
     def __init__(self) -> None:
-        self.model_name = "gemini-3.1-flash"
+        self.model_name = "gemini-2.5-flash"
         self.api_key = os.environ["GOOGLE_GENAI_API_KEY"]
         self.model = self._load_model()
 

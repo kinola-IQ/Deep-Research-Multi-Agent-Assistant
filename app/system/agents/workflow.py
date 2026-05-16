@@ -1,4 +1,5 @@
 """module to hgandle workflow orchestration"""
+import asyncio
 from llama_index.core.workflow import (
     StartEvent,
     StopEvent,
@@ -93,7 +94,10 @@ class WorkflowClass(Workflow):
         all_answers = ""
         for q_and_a in research:
             all_answers += f"Question: {q_and_a.question}\nAnswer: {q_and_a.answer}\n\n"
-
+        
+        # pause before agent executes
+        await asyncio.sleep(30)
+        
         # Prompt the report
         result = await self.report_agent.run(user_msg=f"""You are part of a deep research system.
           You have been given a complex topic on which to write a report:
