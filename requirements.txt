@@ -1,9 +1,9 @@
 fastapi
 uvicorn[standard]
 llama-index
-langchain-community
 tavily
 tenacity
 requests
 streamlit
 llama-index-llms-google-genai
+llama-index-llms-groq

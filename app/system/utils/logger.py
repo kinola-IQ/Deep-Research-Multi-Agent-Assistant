@@ -1,8 +1,22 @@
 """module to log system events"""
 import logging
+from logging.handlers import RotatingFileHandler
 import time
 
+
 # instantiating logger
+# Create a rotating file handler
+handler = RotatingFileHandler(
+    "app.log",        # log file name
+    maxBytes=10000,    # rotate after ~10KB
+    backupCount=5     # keep 5 old log files
+)
+
+logging.basicConfig(
+    level=logging.DEBUG,  # log all levels DEBUG and above
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[handler]
+)
 logger = logging.getLogger('uvicorn.error')
 
 

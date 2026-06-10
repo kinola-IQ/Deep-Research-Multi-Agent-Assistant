@@ -6,7 +6,8 @@ from abc import ABC, abstractmethod
 
 # model providers to iterate through
 from llama_index.llms.google_genai import GoogleGenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
+from llama_index.llms.groq import Groq
+
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 
 
@@ -62,7 +63,7 @@ class OllamaClass(LLM):
 class GoogleGenAIClass(LLM):
     """provides access to google gemini models"""
     def __init__(self) -> None:
-        self.model_name = "gemini-2.5-flash"
+        self.model_name = "gemini-2.5-pro"
         self.api_key = os.environ["GOOGLE_GENAI_API_KEY"]
         self.model = self._load_model()
 
@@ -74,3 +75,21 @@ class GoogleGenAIClass(LLM):
             model=self.model_name,
             api_key=self.api_key,
         )
+
+
+# Groq
+class GroqClass(LLM):
+    """provides access to groq models"""
+    def __init__(self) -> None:
+        self.model_name = "llama-3.1-8b-instant"
+        self.api_key = os.environ["GROQ_API_KEY"]
+        self.model = self._load_model()
+
+    @retry(wait=wait_random_exponential(10, 20), stop=stop_after_attempt(5))
+    def _load_model(self):
+        """loads model for use"""
+
+        return Groq(
+            model=self.model_name,
+            api_key=self.api_key,
+            )

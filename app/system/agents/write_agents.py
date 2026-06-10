@@ -11,6 +11,7 @@ def get_report_agent():
 
     return FunctionAgent(
         tools=[write_report],
+        initial_tool_choice=None,
         llm=llm,
         verbose=False,
         system_prompt="""You are part of a deep research system.

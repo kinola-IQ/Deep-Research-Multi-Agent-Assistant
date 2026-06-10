@@ -24,7 +24,7 @@ async def load_model():
     :returns: None
     """
     global model
-    model = LLMSwitcher().load_model('google')
+    model = LLMSwitcher().load_model('groq')
     if model is None:
         logger.error('could not load the model: ')
         raise ModelLoadError('could not load model')

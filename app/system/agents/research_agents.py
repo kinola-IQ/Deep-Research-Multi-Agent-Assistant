@@ -21,6 +21,7 @@ def get_question_agent():
 
     return FunctionAgent(
         tools=[],
+        initial_tool_choice=None,
         llm=llm,
         verbose=False,
         system_prompt="""You are part of a deep research system.
@@ -48,5 +49,6 @@ def get_research_agent():
         ),
         llm=llm,
         tools=[search_web, record_notes],
+        initial_tool_choice=None,
         verbose=False,
     )
