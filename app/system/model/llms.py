@@ -81,7 +81,7 @@ class GoogleGenAIClass(LLM):
 class GroqClass(LLM):
     """provides access to groq models"""
     def __init__(self) -> None:
-        self.model_name = "llama-3.1-8b-instant"
+        self.model_name = "llama-3.3-70b-versatile"  # "llama-3.1-8b-instant"
         self.api_key = os.environ["GROQ_API_KEY"]
         self.model = self._load_model()
 
