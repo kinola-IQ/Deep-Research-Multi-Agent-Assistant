@@ -25,6 +25,7 @@ jobs:
       - name: Ruff check
         run: |
           ruff check .
+          
   test:
     runs-on: ubuntu-latest
     needs: lint

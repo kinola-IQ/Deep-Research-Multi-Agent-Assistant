@@ -1,6 +1,7 @@
 """module to hgandle workflow orchestration"""
 import asyncio
 import time
+from llama_index.llms.litellm import LiteLLM
 from llama_index.core.workflow import (
     StartEvent,
     StopEvent,
@@ -26,6 +27,11 @@ class WorkflowClass(Workflow):
     This is central hub that controls how the agents interacts
     to answer questions
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Allow a maximum of 3 LLM calls to execute at the exact same millisecond
+        self.api_semaphore = asyncio.Semaphore(3)
+        
     @step
     async def setup(self, ctx: Context, ev: StartEvent) -> GenerateEvent:
         self.question_agent = ev.question_agent
@@ -55,8 +61,9 @@ class WorkflowClass(Workflow):
                 got the following feedback, consisting of additional questions
                 you might want to ask: <feedback>{ev.feedback}</feedback>.
                 Keep this in mind when formulating your questions."""
-
-        result = await self.question_agent.run(user_msg=prompt)
+         # Wrap LLM call with the semaphore traffic light
+        async with self.api_semaphore:
+            result = await self.question_agent.run(user_msg=prompt)
 
         # Some basic string manipulation to get separate questions
         lines = str(result).split("\n")
@@ -71,11 +78,12 @@ class WorkflowClass(Workflow):
 
     @step
     async def answer_question(self, ctx: Context, ev: QuestionEvent) -> AnswerEvent:
-
-        result = await self.answer_agent.run(user_msg=f"""Research the answer to this
-          question: <question>{ev.question}</question>. You can use web
-          search to help you find information on the topic, as many times
-          as you need. Return just the answer without preamble or markdown.""")
+        # Wrap LLM call with the semaphore traffic light
+        async with self.api_semaphore:
+            result = await self.answer_agent.run(user_msg=f"""Research the answer to this
+              question: <question>{ev.question}</question>. You can use web
+              search to help you find information on the topic, as many times
+              as you need. Return just the answer without preamble or markdown.""")
 
         ctx.write_event_to_stream(ProgressEvent(msg=f"""Received question {ev.question}
             Came up with answer: {str(result)}"""))
@@ -83,7 +91,7 @@ class WorkflowClass(Workflow):
         return AnswerEvent(question=ev.question, answer=str(result))
 
     @step
-    async def write_report(self, ctx: Context, ev: AnswerEvent) -> ReviewEvent:
+    async def write_report(self, ctx: Context, ev: AnswerEvent) -> ReviewEvent | None:
 
         # CODE: store the answers in a variable
         research = ctx.collect_events(ev, [AnswerEvent] * await ctx.store.get("total_questions"))
@@ -103,9 +111,12 @@ class WorkflowClass(Workflow):
         await asyncio.sleep(30)
         
         # Prompt the report
-        result = await self.report_agent.run(user_msg=f"""You are part of a deep research system.
-          You have been given a complex topic on which to write a report:
-          <topic>{await ctx.store.get("research_topic")}.
+         # Wrap LLM call with the semaphore traffic light
+         # to control the number of concurrent API calls and avoid hitting rate limits
+        async with self.api_semaphore:
+            result = await self.report_agent.run(user_msg=f"""You are part of a deep research system.
+              You have been given a complex topic on which to write a report:
+              <topic>{await ctx.store.get("research_topic")}.
 
           Other agents have already come up with a list of questions about the
           topic and answers to those questions. Your job is to write a clear,
@@ -120,11 +131,12 @@ class WorkflowClass(Workflow):
     async def review(self, ctx: Context, ev: ReviewEvent) -> StopEvent | FeedbackEvent:
 
         # CODE: call the review agent at this step
-        result = await self.review_agent.run(user_msg=f"""You are part of a deep research system.
-          You have just written a report about the topic {await ctx.store.get("research_topic")}.
-          Here is the report: <report>{ev.report}</report>
-          Decide whether this report is sufficiently comprehensive.
-          If it is, respond with just the string "ACCEPTABLE" and nothing else.
+        async with self.api_semaphore:
+            result = await self.review_agent.run(user_msg=f"""You are part of a deep research system.
+              You have just written a report about the topic {await ctx.store.get("research_topic")}.
+              Here is the report: <report>{ev.report}</report>
+              Decide whether this report is sufficiently comprehensive.
+              If it is, respond with just the string "ACCEPTABLE" and nothing else.
           If it needs more research, suggest some additional questions that could
           have been asked.""")
 

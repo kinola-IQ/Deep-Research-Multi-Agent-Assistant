@@ -8,6 +8,7 @@ class FeedbackEvent(Event):
     """
     Docstring for FeedbackEvent
     """
+    research_topic: str
     feedback: str
 
 

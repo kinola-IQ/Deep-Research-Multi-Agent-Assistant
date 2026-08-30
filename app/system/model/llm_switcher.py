@@ -1,5 +1,5 @@
 """module to handle switching of large language models providers"""
-from .llms import OllamaClass, GoogleGenAIClass, GroqClass
+from .llms import LiteLLMClass, OllamaClass, GoogleGenAIClass, GroqClass
 from ..utils.logger import logger
 from ..utils.custom_exceptions import ModelLoadError
 
@@ -24,6 +24,9 @@ class LLMSwitcher:
             return provider_instance.model
         if provider.lower() == 'groq':
             provider_instance = GroqClass()
+            return provider_instance.model
+        elif provider.lower() == 'litellm':
+            provider_instance = LiteLLMClass()
             return provider_instance.model
         raise ValueError(f"Unsupported provider: {provider}")
 
