@@ -65,3 +65,28 @@ texinfo_documents = [
 
 # -- Extension configuration -------------------------------------------------
 todo_include_todos = True
+
+
+# running doc generator automatically
+# docs/conf.py
+import os
+import sys
+import subprocess
+
+# Add your project root to sys.path
+sys.path.insert(0, os.path.abspath('../src'))
+
+def run_apidoc(_):
+    """Run sphinx-apidoc automatically before build."""
+    src_dir = os.path.abspath('../src')
+    apidoc_dir = os.path.abspath('api')
+    subprocess.call([
+        'sphinx-apidoc',
+        '-o', apidoc_dir,
+        src_dir,
+        '--force',
+        '--module-first'
+    ])
+
+def setup(app):
+    app.connect('builder-inited', run_apidoc)
