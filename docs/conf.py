@@ -74,11 +74,11 @@ import sys
 import subprocess
 
 # Add your project root to sys.path
-sys.path.insert(0, os.path.abspath('../src'))
+sys.path.insert(0, os.path.abspath('../app'))
 
 def run_apidoc(_):
     """Run sphinx-apidoc automatically before build."""
-    src_dir = os.path.abspath('../src')
+    src_dir = os.path.abspath('../app')
     apidoc_dir = os.path.abspath('api')
     subprocess.call([
         'sphinx-apidoc',
